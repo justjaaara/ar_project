@@ -5,16 +5,14 @@ import { ARCameraView } from "@/components/ARCameraView";
 import { NavigationControls } from "@/components/NavigationControls";
 
 export async function generateStaticParams() {
-  return LOCATIONS.map((location) => ({
-    id: location.id,
-  }));
+  return LOCATIONS.map((location) => ({ id: location.id }));
 }
 
 interface PageProps {
   params: { id: string };
 }
 
-export default async function LocationPage({ params }: PageProps) {
+export default function LocationPage({ params }: PageProps) {
   const location = LOCATIONS.find((loc) => loc.id === params.id);
 
   if (!location) {
