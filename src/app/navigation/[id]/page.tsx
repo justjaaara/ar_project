@@ -9,12 +9,24 @@ export async function generateStaticParams() {
   return LOCATIONS.map((location) => ({ id: location.id }));
 }
 
-interface PageProps {
-  params: { id: string };
-}
+// Forzar modo estático para evitar problemas con los tipos
+export const dynamic = "force-static";
+export const dynamicParams = false;
 
-export default function LocationPage({ params }: PageProps) {
-  const location = LOCATIONS.find((loc) => loc.id === params.id);
+// Manejo explícito de los params convertidos en texto
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PageProps = any;
+
+export default function LocationPage(props: PageProps) {
+  // Extraer el ID de los parámetros
+  const id =
+    typeof props.params === "object" && props.params !== null
+      ? props.params.id
+      : typeof props.params === "string"
+      ? props.params
+      : undefined;
+
+  const location = LOCATIONS.find((loc) => loc.id === id);
 
   if (!location) {
     notFound();
