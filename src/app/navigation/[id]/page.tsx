@@ -4,6 +4,7 @@ import { LocationHeader } from "@/components/LocationHeader";
 import { ARCameraView } from "@/components/ARCameraView";
 import { NavigationControls } from "@/components/NavigationControls";
 
+// Esto le dice a Next.js qué rutas estáticas generar
 export async function generateStaticParams() {
   return LOCATIONS.map((location) => ({ id: location.id }));
 }
