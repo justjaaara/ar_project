@@ -4,14 +4,18 @@ import { LocationHeader } from "@/components/LocationHeader";
 import { ARCameraView } from "@/components/ARCameraView";
 import { NavigationControls } from "@/components/NavigationControls";
 
+export async function generateStaticParams() {
+  return LOCATIONS.map((location) => ({
+    id: location.id,
+  }));
+}
+
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }
 
 export default async function LocationPage({ params }: PageProps) {
-  const { id } = await params;
-
-  const location = LOCATIONS.find((loc) => loc.id === id);
+  const location = LOCATIONS.find((loc) => loc.id === params.id);
 
   if (!location) {
     notFound();
