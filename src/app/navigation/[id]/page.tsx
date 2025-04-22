@@ -4,11 +4,15 @@ import { LocationHeader } from "@/components/LocationHeader";
 import { ARCameraView } from "@/components/ARCameraView";
 import { NavigationControls } from "@/components/NavigationControls";
 
-export default function LocationPage({ params }: { params: { id: string } }) {
-  // Buscar el lugar seleccionado por el ID
-  const location = LOCATIONS.find((loc) => loc.id === params.id);
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
 
-  // Si no se encuentra el lugar, mostrar página 404
+export default async function LocationPage({ params }: PageProps) {
+  const { id } = await params;
+
+  const location = LOCATIONS.find((loc) => loc.id === id);
+
   if (!location) {
     notFound();
   }
@@ -16,7 +20,6 @@ export default function LocationPage({ params }: { params: { id: string } }) {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
       <LocationHeader location={location} />
-
       <div className="flex-1 relative flex flex-col">
         <ARCameraView location={location} />
         <NavigationControls location={location} />
