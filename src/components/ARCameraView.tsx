@@ -19,6 +19,7 @@ export const ARCameraView: React.FC<ARCameraViewProps> = ({ location }) => {
   }>({ alpha: null, beta: null, gamma: null });
   const [distance, setDistance] = useState<number | null>(null);
   const [bearing, setBearing] = useState<number | null>(null);
+  const [isClient, setIsClient] = useState(false);
 
   // Función para calcular la distancia entre dos puntos
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -52,6 +53,15 @@ export const ARCameraView: React.FC<ARCameraViewProps> = ({ location }) => {
   };
 
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    // Verifica que esté en el navegador y que mediaDevices exista
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setError('La cámara no es compatible o no está disponible en este dispositivo/navegador.');
+      return;
+    }
     const initializeCamera = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -125,7 +135,9 @@ export const ARCameraView: React.FC<ARCameraViewProps> = ({ location }) => {
       };
 
       const handleError = (err: GeolocationPositionError) => {
-        console.error('Error de geolocalización:', err);
+        const code = err && 'code' in err ? err.code : 'desconocido';
+        const message = err && 'message' in err ? err.message : 'Sin mensaje';
+        console.error(`Error de geolocalización [${code}]: ${message}`);
         setError('No se pudo acceder a la ubicación. Por favor, asegúrate de dar los permisos necesarios.');
       };
 
@@ -229,12 +241,14 @@ export const ARCameraView: React.FC<ARCameraViewProps> = ({ location }) => {
         playsInline
         className="absolute top-0 left-0 w-full h-full object-cover"
       />
-      <canvas
-        ref={canvasRef}
-        className="absolute top-0 left-0 w-full h-full"
-        width={typeof window !== 'undefined' ? window.innerWidth : 0}
-        height={typeof window !== 'undefined' ? window.innerHeight : 0}
-      />
+      {isClient && (
+        <canvas
+          ref={canvasRef}
+          className="absolute top-0 left-0 w-full h-full"
+          width={window.innerWidth}
+          height={window.innerHeight}
+        />
+      )}
       <div className="absolute bottom-0 left-0 right-0 p-4 bg-black/50 text-white">
         <h2 className="text-xl font-bold mb-2">{location.name}</h2>
         <p className="text-sm text-gray-300">{location.description}</p>

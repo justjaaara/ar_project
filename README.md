@@ -58,3 +58,28 @@ La aplicación está actualmente en fase de desarrollo con una interfaz funciona
 - Desarrollo de modelos 3D para mejorar la visualización AR
 - Optimización de la experiencia de usuario basada en pruebas reales
 - Integración con el mapa oficial de la Universidad de Medellín
+
+# AR Project
+
+## Cómo habilitar la geolocalización y la actualización en vivo de la flecha en cualquier dispositivo 
+
+1. **Inicia el servidor de desarrollo:**
+   
+   En la carpeta del proyecto, ejecuta:
+   
+   pnpm dev
+
+2. **Descarga y configura ngrok:**
+   - Descarga ngrok desde https://ngrok.com/download y descomprime el ejecutable.
+   - Regístrate gratis en https://dashboard.ngrok.com/signup.
+   - Copia tu authtoken desde https://dashboard.ngrok.com/get-started/your-authtoken.
+   - Abre una terminal en la carpeta donde está ngrok.exe y ejecuta:
+     .\ngrok config add-authtoken TU_TOKEN
+
+3. **Expón tu servidor local con HTTPS:**
+   
+   .\ngrok http 3000
+
+4. **Abre la URL HTTPS que te da ngrok ** (Caso de ser un celular u otro dispositivo diferente del dispositivo donde corre localhost, debe estar en la misma red WiFi).
+
+Así la geolocalización y la flecha de navegación funcionarán correctamente en tu dispositivo.
