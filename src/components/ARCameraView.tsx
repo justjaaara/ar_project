@@ -12,14 +12,15 @@ export const ARCameraView: React.FC<ARCameraViewProps> = ({ location }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
-  const [orientation, setOrientation] = useState<{
-    alpha: number | null;
-    beta: number | null;
-    gamma: number | null;
-  }>({ alpha: null, beta: null, gamma: null });
   const [distance, setDistance] = useState<number | null>(null);
-  const [bearing, setBearing] = useState<number | null>(null);
   const [isClient, setIsClient] = useState(false);
+
+  // Refs para valores en tiempo real
+  const orientationRef = useRef<{ alpha: number | null; beta: number | null; gamma: number | null }>(
+    { alpha: null, beta: null, gamma: null }
+  );
+  // Ref para distancia en tiempo real
+  const distanceRef = useRef<number | null>(null);
 
   // Función para calcular la distancia entre dos puntos
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -35,21 +36,6 @@ export const ARCameraView: React.FC<ARCameraViewProps> = ({ location }) => {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
     return R * c;
-  };
-
-  // Función para calcular el ángulo de dirección entre dos puntos
-  const calculateBearing = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const φ1 = (lat1 * Math.PI) / 180;
-    const φ2 = (lat2 * Math.PI) / 180;
-    const λ1 = (lon1 * Math.PI) / 180;
-    const λ2 = (lon2 * Math.PI) / 180;
-
-    const y = Math.sin(λ2 - λ1) * Math.cos(φ2);
-    const x = Math.cos(φ1) * Math.sin(φ2) -
-              Math.sin(φ1) * Math.cos(φ2) * Math.cos(λ2 - λ1);
-    let θ = Math.atan2(y, x);
-    θ = (θ * 180 / Math.PI + 360) % 360;
-    return θ;
   };
 
   useEffect(() => {
@@ -96,11 +82,11 @@ export const ARCameraView: React.FC<ARCameraViewProps> = ({ location }) => {
   useEffect(() => {
     if (typeof window !== 'undefined' && window.DeviceOrientationEvent) {
       const handleOrientation = (event: DeviceOrientationEvent) => {
-        setOrientation({
+        orientationRef.current = {
           alpha: event.alpha,
           beta: event.beta,
           gamma: event.gamma
-        });
+        };
       };
 
       window.addEventListener('deviceorientation', handleOrientation);
@@ -115,8 +101,6 @@ export const ARCameraView: React.FC<ARCameraViewProps> = ({ location }) => {
     if (typeof window !== 'undefined' && navigator.geolocation) {
       const handlePosition = (pos: GeolocationPosition) => {
         const { latitude, longitude } = pos.coords;
-
-        // Calcular distancia y dirección
         const dist = calculateDistance(
           latitude,
           longitude,
@@ -124,14 +108,7 @@ export const ARCameraView: React.FC<ARCameraViewProps> = ({ location }) => {
           location.coordinates.longitude
         );
         setDistance(dist);
-
-        const bear = calculateBearing(
-          latitude,
-          longitude,
-          location.coordinates.latitude,
-          location.coordinates.longitude
-        );
-        setBearing(bear);
+        distanceRef.current = dist;
       };
 
       const handleError = (err: GeolocationPositionError) => {
@@ -159,61 +136,87 @@ export const ARCameraView: React.FC<ARCameraViewProps> = ({ location }) => {
 
   useEffect(() => {
     if (!isCameraActive || !canvasRef.current || !videoRef.current) return;
-
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
+    // Ajustar tamaño del canvas dinámicamente para evitar reflows y asegurar calidad
+    const resizeCanvas = () => {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      canvas.style.width = window.innerWidth + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+      ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+    };
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    // Estado interno para animación suave
+    let lastAngle = 0;
+    let animationFrameId: number;
+    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
     const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (videoRef.current && ctx) {
-        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-        
-        // Calcular la dirección basada en la orientación y el bearing
-        const deviceDirection = orientation.alpha ? (orientation.alpha + 90) % 360 : 0;
-        const targetDirection = bearing !== null ? (deviceDirection - bearing + 360) % 360 : 0;
-        
+        ctx.drawImage(
+          videoRef.current,
+          0,
+          0,
+          canvas.width,
+          canvas.height
+        );
+        // Usar refs para valores más recientes
+        const orientation = orientationRef.current;
+        const distance = distanceRef.current;
+        const deviceDirection = orientation.alpha != null ? (orientation.alpha + 90) % 360 : 0;
+        const targetDirection = distance != null ? (deviceDirection - distance + 360) % 360 : 0;
+        // Interpolación suave del ángulo
+        lastAngle = lerp(lastAngle, targetDirection, 0.15);
         // Dibujar indicadores AR
+        ctx.save();
         ctx.fillStyle = 'rgba(59, 130, 246, 0.5)';
         ctx.beginPath();
-        ctx.arc(canvas.width / 2, canvas.height / 2, 20, 0, Math.PI * 2);
+        ctx.arc(canvas.width / 2, canvas.height / 2, 20 * (window.devicePixelRatio || 1), 0, Math.PI * 2);
         ctx.fill();
-
         // Dibujar flecha de dirección con rotación
-        ctx.save();
         ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.rotate((targetDirection * Math.PI) / 180);
+        ctx.rotate((lastAngle * Math.PI) / 180);
         ctx.strokeStyle = '#3B82F6';
-        ctx.lineWidth = 5;
+        ctx.lineWidth = 5 * (window.devicePixelRatio || 1);
         ctx.beginPath();
         ctx.moveTo(0, 0);
-        ctx.lineTo(0, -50);
+        ctx.lineTo(0, -50 * (window.devicePixelRatio || 1));
         ctx.stroke();
         ctx.restore();
-
         // Dibujar información del destino
+        ctx.save();
         ctx.fillStyle = 'white';
-        ctx.font = '20px Arial';
+        ctx.font = `${20 * (window.devicePixelRatio || 1)}px Arial`;
         ctx.textAlign = 'center';
-        ctx.fillText(location.name, canvas.width / 2, canvas.height / 2 + 100);
-
+        ctx.fillText(location.name, canvas.width / 2, canvas.height / 2 + 100 * (window.devicePixelRatio || 1));
+        ctx.restore();
         // Mostrar información de orientación y distancia
         if (orientation.alpha !== null && distance !== null) {
+          ctx.save();
           ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-          ctx.fillRect(10, 10, 250, 100);
+          ctx.fillRect(10 * (window.devicePixelRatio || 1), 10 * (window.devicePixelRatio || 1), 250 * (window.devicePixelRatio || 1), 100 * (window.devicePixelRatio || 1));
           ctx.fillStyle = 'white';
-          ctx.font = '14px Arial';
+          ctx.font = `${14 * (window.devicePixelRatio || 1)}px Arial`;
           ctx.textAlign = 'left';
-          ctx.fillText(`Dirección: ${Math.round(targetDirection)}°`, 20, 30);
-          ctx.fillText(`Distancia: ${Math.round(distance)} metros`, 20, 50);
-          ctx.fillText(`Inclinación: ${Math.round(orientation.beta || 0)}°`, 20, 70);
-          ctx.fillText(`Rotación: ${Math.round(orientation.gamma || 0)}°`, 20, 90);
+          ctx.fillText(`Dirección: ${Math.round(lastAngle)}°`, 20 * (window.devicePixelRatio || 1), 30 * (window.devicePixelRatio || 1));
+          ctx.fillText(`Distancia: ${Math.round(distance)} metros`, 20 * (window.devicePixelRatio || 1), 50 * (window.devicePixelRatio || 1));
+          ctx.fillText(`Inclinación: ${Math.round(orientation.beta || 0)}°`, 20 * (window.devicePixelRatio || 1), 70 * (window.devicePixelRatio || 1));
+          ctx.fillText(`Rotación: ${Math.round(orientation.gamma || 0)}°`, 20 * (window.devicePixelRatio || 1), 90 * (window.devicePixelRatio || 1));
+          ctx.restore();
         }
       }
-      requestAnimationFrame(draw);
+      animationFrameId = requestAnimationFrame(draw);
     };
-
     draw();
-  }, [isCameraActive, location, orientation, bearing, distance]);
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('resize', resizeCanvas);
+    };
+  }, [isCameraActive, location]);
 
   if (error) {
     return (
