@@ -172,20 +172,39 @@ export const ARCameraView: React.FC<ARCameraViewProps> = ({ location }) => {
         // Interpolación suave del ángulo
         lastAngle = lerp(lastAngle, targetDirection, 0.15);
         // Dibujar indicadores AR
+        // Dibuja solo una bolita pequeña en la base de la flecha
         ctx.save();
-        ctx.fillStyle = 'rgba(59, 130, 246, 0.5)';
+        ctx.fillStyle = '#3B82F6';
         ctx.beginPath();
-        ctx.arc(canvas.width / 2, canvas.height / 2, 20 * (window.devicePixelRatio || 1), 0, Math.PI * 2);
+        ctx.arc(canvas.width / 2, canvas.height / 2, 8 * (window.devicePixelRatio || 1), 0, Math.PI * 2);
+        ctx.shadowColor = '#60a5fa';
+        ctx.shadowBlur = 6 * (window.devicePixelRatio || 1);
         ctx.fill();
+        ctx.shadowBlur = 0;
         // Dibujar flecha de dirección con rotación
         ctx.translate(canvas.width / 2, canvas.height / 2);
         ctx.rotate((lastAngle * Math.PI) / 180);
         ctx.strokeStyle = '#3B82F6';
         ctx.lineWidth = 5 * (window.devicePixelRatio || 1);
+        // Flecha con punta triangular
         ctx.beginPath();
+        // Línea principal (sin colita, inicia en el centro)
         ctx.moveTo(0, 0);
         ctx.lineTo(0, -50 * (window.devicePixelRatio || 1));
         ctx.stroke();
+
+        // Punta de flecha (triángulo)
+        ctx.beginPath();
+        ctx.moveTo(0, -60 * (window.devicePixelRatio || 1)); // punta
+        ctx.lineTo(-12 * (window.devicePixelRatio || 1), -40 * (window.devicePixelRatio || 1));
+        ctx.lineTo(12 * (window.devicePixelRatio || 1), -40 * (window.devicePixelRatio || 1));
+        ctx.closePath();
+        ctx.fillStyle = '#3B82F6';
+        ctx.shadowColor = '#60a5fa';
+        ctx.shadowBlur = 10 * (window.devicePixelRatio || 1);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.restore();
         ctx.restore();
         // Dibujar información del destino
         ctx.save();
